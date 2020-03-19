@@ -1,0 +1,57 @@
+node
+{
+
+ echo "GitHub BranchName ${env.BRANCH_NAME}"
+ echo "Jenkins Job Number ${env.BUILD_NUMBER}"
+ echo "Jenkins Home ${env.JENKINS_HOME}"
+ echo "Jenkins URL ${env.JENKINS_URL}"
+ echo "Job Name ${env.JOB_NAME}"
+ 
+ //properties([
+  // buildDiscarder(logRotator(numToKeepStr:'3')),
+   //pipelineTriggers([
+       //polSCM('* * * * *')
+       
+    //])
+ //])
+ 
+ 
+ def  mavenHome=tool  name: "maven-3.6.1", type: "maven"
+ stage('CheckOut') 
+ {
+  git branch: 'development', credentialsId: 'f02da5b1-ed86-465e-9f4e-533433b92ba4', url: 'https://github.com/Bhaskar-ec-org/maven-web-application.git'   
+ }
+ stage('Build')
+ {
+  sh "${mavenHome}/bin/mvn clean package"
+ }
+ 
+ stage('SonarqubeReport')
+ {
+  sh "${mavenHome}/bin/mvn sonar:sonar"   
+ }
+ 
+ stage('UploadArtifactIntoNexus')
+ {
+  sh "${mavenHome}/bin/mvn deploy"   
+ }
+ 
+ stage('DeployAppIntoTomcat'){
+ 
+ sshagent(['8b0e5722-3f58-4494-a28c-e1de3247f960']) {
+     
+    sh "scp -o StrictHostKeyChecking=no target/maven-web-application.war ec2-user@18.221.225.35:/opt/tomcat9/webapps/maven-web-application.war"   
+ }
+ 
+ }
+ 
+ stage('EmailNotification')
+ {
+  emailext body: '''
+Regards,
+Bhaskar,
+Bangalore-560037,
+MSS,''', subject: 'Build is Over', to: 'bhaskardevops566@gmail.com'    
+ }
+    
+}
